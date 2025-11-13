@@ -1,28 +1,48 @@
-import { OpenAIStream, StreamingTextResponse } from 'ai';
-import Groq from 'groq-sdk';
+require('dotenv').config();
+
+const Groq = require('groq-sdk');
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export const runtime = 'edge';
+async function main() {
+  console.log("Iniciando script de chat con Groq...");
 
-export async function POST(req) {
+  if (!process.env.GROQ_API_KEY) {
+    console.error("\nERROR: La variable de entorno GROQ_API_KEY no fue encontrada.");
+    console.error("Por favor, asegúrate de tener un archivo .env.local con tu clave válida.");
+    return; 
+  }
+
   try {
-    const { messages } = await req.json();
+    console.log("Enviando petición a la API de Groq... Por favor, espera.\n");
 
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant', 
-      stream: true,
-      messages, 
+    const stream = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        {
+          role: 'user',
+          content: 'haz una poesia sobre html en versos alejandrinos que rime en consonante',
+        }
+      ],
+      stream: true, 
     });
 
-    const stream = OpenAIStream(response);
+    console.log("Respuesta de la IA:");
+    process.stdout.write("-> "); 
 
-    return new StreamingTextResponse(stream);
-    
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      process.stdout.write(content);
+    }
+
+    console.log('\n\n--- Fin de la comunicación ---');
+
   } catch (error) {
-    console.error("Error en la llamada a la API de Groq:", error);
-    return new Response("Error interno del servidor", { status: 500 });
+    console.error("\nHa ocurrido un error al contactar con la API de Groq:");
+    console.error(error);
   }
 }
+
+main();
