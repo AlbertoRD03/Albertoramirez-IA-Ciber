@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piedra Papel Tijeras - IA</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1f2937;
+      --accent: #22d3ee;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f87171;
+      --success: #4ade80;
+    }
+    .controls.moves {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #111827, #0f172a 40%), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .app {
+      width: min(1100px, 100%);
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.12), rgba(56, 189, 248, 0.05));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.4);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .badge {
+      background: rgba(34, 211, 238, 0.15);
+      color: var(--accent);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      border: 1px solid rgba(34, 211, 238, 0.35);
+    }
+    .badge.success {
+      background: rgba(74, 222, 128, 0.18);
+      color: #bbf7d0;
+      border-color: rgba(74, 222, 128, 0.5);
+    }
+    .badge.muted {
+      background: rgba(148, 163, 184, 0.18);
+      color: #e5e7eb;
+      border-color: rgba(148, 163, 184, 0.4);
+    }
+    .badge.button {
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s ease, border-color 0.1s ease;
+    }
+    .badge.button:hover { transform: translateY(-1px); border-color: var(--accent); }
+    .round-config {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .round-config input[type="number"] {
+      width: 120px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-size: 14px;
+    }
+    .round-config label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .round-info {
+      margin-top: 8px;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .button-lg { padding: 14px 18px; font-size: 16px; }
+    .controls .secondary { opacity: 0.9; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .muted { color: var(--muted); font-size: 14px; margin: 0; }
+    .score {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .score .pill {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 18px;
+    }
+    .score .label { display: block; font-size: 12px; color: var(--muted); }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .controls.actions {
+      justify-content: space-between;
+      align-items: stretch;
+    }
+    .controls.actions button {
+      flex: 1;
+      text-align: center;
+    }
+    button {
+      background: rgba(34, 211, 238, 0.15);
+      border: 1px solid rgba(34, 211, 238, 0.4);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+    button:hover { transform: translateY(-1px); border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #0b1224; border-color: var(--accent); }
+    button.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.08); }
+    button.danger { background: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.35); color: var(--danger); }
+    .stack { display: flex; flex-direction: column; gap: 8px; }
+    .history {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .toast-container {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      max-width: 340px;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(31, 41, 55, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      animation: slideLeft 0.2s ease;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .toast.win { border-color: rgba(74, 222, 128, 0.6); }
+    .toast.lose { border-color: rgba(248, 113, 113, 0.6); }
+    .toast.draw { border-color: rgba(148, 163, 184, 0.8); }
+    .toast .winner { font-weight: 700; color: var(--accent); }
+    @keyframes slideLeft {
+      from { transform: translateX(12px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .chip {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+    .response {
+      min-height: 120px;
+      white-space: pre-wrap;
+      font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .status { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; }
+      .score { flex-direction: column; }
+      button { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <div class="title">Piedra · Papel · Tijeras</div>
+        <p class="muted">IA predice tu siguiente jugada. Usa los botones para jugar rondas y ver el análisis.</p>
+      </div>
+      <div class="badge">API en localhost:3050</div>
+      <div class="badge muted button" id="mode-badge" title="Haz clic para alternar modo">Modo: comprobando...</div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Marcador</h3>
+        <div class="score">
+          <div class="pill">
+            <span class="label">Jugador</span>
+            <span id="score-player">0</span>
+          </div>
+          <div class="pill">
+            <span class="label">Máquina</span>
+            <span id="score-machine">0</span>
+          </div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>Selecciona tu jugada</h3>
+        <div class="round-config">
+          <label>
+            <input type="checkbox" id="unlimited" />
+            Ilimitado
+          </label>
+          <input type="number" id="rounds-input" min="10" max="50" value="10" />
+          <span class="muted">Mín 10 · Máx 50</span>
+        </div>
+        <div class="round-info" id="round-info">Ronda 1 de 10</div>
+        <div class="controls moves">
+          <button class="button-lg" data-move="piedra">🪨 Piedra</button>
+          <button class="button-lg" data-move="papel">📄 Papel</button>
+          <button class="button-lg" data-move="tijeras">✂️ Tijeras</button>
+        </div>
+        <div class="controls actions" style="justify-content: center; gap: 12px;">
+          <button class="danger secondary" id="finish">Análisis final</button>
+          <button class="ghost secondary" id="reset">Reiniciar</button>
+        </div>
+        <div class="status">Al jugar, se envía un POST a /api/rps/play.</div>
+      </div>
+      <div class="card">
+        <h3>Respuesta</h3>
+        <div class="response" id="response">Aún no has jugado.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Historial</h3>
+      <p class="muted">Jugador</p>
+      <div class="history" id="history-player"></div>
+      <p class="muted">Máquina</p>
+      <div class="history" id="history-machine"></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const MOVES = ['piedra', 'papel', 'tijeras'];
+    const score = { player: 0, machine: 0 };
+    const history = { player: [], machine: [] };
+    let selectedMove = null;
+    let isPlaying = false;
+    let forceGrok = false; // true = Grok, false = local
+
+    const els = {
+      scorePlayer: document.getElementById('score-player'),
+      scoreMachine: document.getElementById('score-machine'),
+      historyPlayer: document.getElementById('history-player'),
+      historyMachine: document.getElementById('history-machine'),
+      response: document.getElementById('response'),
+      status: document.getElementById('status'),
+      reset: document.getElementById('reset'),
+      finish: document.getElementById('finish'),
+      toast: document.getElementById('toast-container'),
+      unlimited: document.getElementById('unlimited'),
+      roundsInput: document.getElementById('rounds-input'),
+      roundInfo: document.getElementById('round-info'),
+    };
+
+    const moveButtons = Array.from(document.querySelectorAll('button[data-move]'));
+
+    const render = () => {
+      els.scorePlayer.textContent = score.player;
+      els.scoreMachine.textContent = score.machine;
+      els.historyPlayer.innerHTML = history.player.map((m, i) => `<span class="chip">#${i + 1} · ${m}</span>`).join('') || '<span class="muted">Sin jugadas</span>';
+      els.historyMachine.innerHTML = history.machine.map((m, i) => `<span class="chip">#${i + 1} · ${m}</span>`).join('') || '<span class="muted">Sin jugadas</span>';
+      moveButtons.forEach((btn) => {
+        btn.style.borderColor = btn.dataset.move === selectedMove ? 'var(--accent)' : 'rgba(34, 211, 238, 0.35)';
+      });
+      const nextRound = history.player.length + 1;
+      if (targetRounds === null) {
+        els.roundInfo.textContent = `Ronda ${nextRound} · Ilimitado`;
+      } else {
+        els.roundInfo.textContent = `Ronda ${nextRound} de ${targetRounds}`;
+      }
+    };
+
+    const enforceRounds = () => {
+      if (els.unlimited.checked) {
+        targetRounds = null;
+        els.roundsInput.disabled = true;
+      } else {
+        const val = Number(els.roundsInput.value);
+        const safe = Math.min(50, Math.max(10, isNaN(val) ? 10 : val));
+        els.roundsInput.value = safe;
+        targetRounds = safe;
+        els.roundsInput.disabled = false;
+      }
+      render();
+    };
+
+    const updateBadge = (usingGrok, available) => {
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = usingGrok ? 'Modo: Grok' : 'Modo: Local';
+      badge.classList.toggle('success', usingGrok);
+      badge.classList.toggle('muted', !usingGrok);
+      badge.dataset.available = available ? 'true' : 'false';
+      if (!available) {
+        badge.textContent = 'Grok no disponible';
+        badge.classList.remove('success');
+        badge.classList.add('muted');
+      }
+    };
+
+    const loadMode = async () => {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const available = !!data.grokAvailable;
+        forceGrok = available ? !!data.usingGrok : false;
+        updateBadge(forceGrok, available);
+      } catch (err) {
+        updateBadge(false, false);
+        setResponse('Grok no disponible. Revisa la clave o la conexión.', true);
+      }
+    };
+
+    const winner = (player, machine) => {
+      if (player === machine) return 'draw';
+      if (
+        (player === 'piedra' && machine === 'tijeras') ||
+        (player === 'papel' && machine === 'piedra') ||
+        (player === 'tijeras' && machine === 'papel')
+      ) return 'player';
+      return 'machine';
+    };
+
+    const updateScores = (playerMove, machineMove) => {
+      const result = winner(playerMove, machineMove);
+      if (result === 'player') score.player += 1;
+      if (result === 'machine') score.machine += 1;
+      els.status.textContent = result === 'draw'
+        ? 'Empate en la última ronda.'
+        : `Ganó ${result === 'player' ? 'el jugador' : 'la máquina'} en la última ronda.`;
+      return result;
+    };
+
+    const showToast = (roundNumber, playerMove, machineMove, result) => {
+      // Limpia toasts previos para no saturar pantalla
+      els.toast.innerHTML = '';
+      const toast = document.createElement('div');
+      toast.className = `toast ${result}`;
+      const winnerText = result === 'draw'
+        ? 'Empate'
+        : result === 'player'
+          ? 'Ganó el jugador'
+          : 'Ganó la máquina';
+      toast.innerHTML = `
+        <div class="winner">${winnerText}</div>
+        <div><strong>Jugador:</strong> ${playerMove}</div>
+        <div><strong>Máquina:</strong> ${machineMove}</div>
+        <div class="muted">Ronda ${roundNumber}</div>
+      `;
+      els.toast.appendChild(toast);
+      setTimeout(() => toast.remove(), 1800);
+    };
+
+    const setResponse = (text, isError = false) => {
+      els.response.textContent = text;
+      els.response.style.color = isError ? '#fca5a5' : '#e5e7eb';
+    };
+
+    moveButtons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        selectedMove = btn.dataset.move;
+        render();
+        await playRound();
+      });
+    });
+
+    const playRound = async () => {
+      if (isPlaying) return;
+      if (!selectedMove) {
+        setResponse('Selecciona una jugada antes de jugar.', true);
+        return;
+      }
+      const playerMove = selectedMove;
+      if (targetRounds !== null && history.player.length >= targetRounds) {
+        setResponse('Ya alcanzaste el número de rondas elegido. Finaliza o cambia la configuración.', true);
+        return;
+      }
+      isPlaying = true;
+      try {
+        const res = await fetch(`/api/rps/play?useGrok=${forceGrok}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score, history, finish: false, useGrok: forceGrok }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Error en la API');
+        }
+        const data = await res.json();
+        history.player.push(playerMove);
+        history.machine.push(data.next_move);
+        const result = updateScores(playerMove, data.next_move);
+        showToast(history.player.length, playerMove, data.next_move, result);
+        setResponse(JSON.stringify(data, null, 2));
+        if (targetRounds !== null && history.player.length >= targetRounds) {
+          els.status.textContent = 'Has alcanzado el límite de rondas. Puedes pedir análisis final.';
+        }
+      } catch (err) {
+        setResponse(err.message, true);
+      } finally {
+        selectedMove = null;
+        render();
+        isPlaying = false;
+      }
+    };
+
+    const finishAnalysis = async () => {
+      try {
+        const res = await fetch(`/api/rps/play?useGrok=${forceGrok}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score, history, finish: true, useGrok: forceGrok }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Error en la API');
+        }
+        const text = await res.text();
+        setResponse(text, false);
+        reset(true);
+      } catch (err) {
+        setResponse(err.message, true);
+      }
+    };
+
+    const reset = (skipMessage = false) => {
+      score.player = 0;
+      score.machine = 0;
+      history.player = [];
+      history.machine = [];
+      selectedMove = null;
+      els.status.textContent = '';
+      if (!skipMessage) {
+        setResponse('Estado reiniciado.');
+      }
+      els.toast.innerHTML = '';
+      enforceRounds();
+      render();
+    };
+
+    els.finish.addEventListener('click', finishAnalysis);
+    els.reset.addEventListener('click', reset);
+    els.unlimited.addEventListener('change', enforceRounds);
+    els.roundsInput.addEventListener('change', enforceRounds);
+    els.roundsInput.addEventListener('input', enforceRounds);
+    document.getElementById('mode-badge').addEventListener('click', async () => {
+      const available = document.getElementById('mode-badge').dataset.available === 'true';
+      if (!available) return;
+      forceGrok = !forceGrok;
+      updateBadge(forceGrok, available);
+      await finishAnalysis();
+    });
+
+    render();
+    enforceRounds();
+    loadMode();
+  </script>
+</body>
+</html>
